@@ -2,8 +2,8 @@
 MM-Neural-Adjoint - A neural adjoint method implementation
 """
 
-__version__ = "0.1.0" 
+from .models.NA import Network
+from .models.base_model import BaseModel
 
-from .models import Network
-
-__all__ = ['Network']
+__version__ = "0.1.0"
+__all__ = ["Network", "BaseModel"]
