@@ -4,18 +4,12 @@ The class wrapper for the networks
 # Built-in
 import os
 import time
-import sys
 import mlflow
 from .base_model import BaseModel
-
-# Torch
 import torch
 from torch import nn
 from torch.optim import lr_scheduler
-
-# Libs
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 
@@ -24,6 +18,7 @@ class Network(object):
                  geometry,
                  spectrum,
                  device,
+                 mlflow_exp_name = 'NA',
                  num_linear_layers = 4,
                  num_conv_layers = 3,
                  num_linear_neurons = 1000,
@@ -34,10 +29,12 @@ class Network(object):
         self.loss = self.make_loss()
         self.optm = None
         self.optm_eval = None
+        self.trained = False
         self.best_validation_loss = float('inf')  
         self.geometry_mean = None
         self.geometry_lower_bound = None
         self.geometry_upper_bound = None
+        self.mlflow_exp_name = mlflow_exp_name
         mlflow.set_tracking_uri('sqlite:///mlflow.db')              # Set the BVL to large number
 
 
@@ -51,11 +48,11 @@ class Network(object):
         """
         if logit is None:
             return None
-        MSE_loss = nn.functional.mse_loss(logit, labels)          # The MSE Loss
+        MSE_loss = nn.functional.mse_loss(logit, labels)
         BDY_loss = 0
-        if G is not None:         # This is using the boundary loss
+        if G is not None:
             X_range, X_lower_bound, X_upper_bound = self.geometry_mean, self.geometry_lower_bound, self.geometry_upper_bound
-            X_mean = (X_lower_bound + X_upper_bound) / 2        # Get the mean
+            X_mean = (X_lower_bound + X_upper_bound) / 2
             relu = torch.nn.ReLU()
             BDY_loss_all = 1 * relu(torch.abs(G - self.build_tensor(X_mean)) - 0.5 * self.build_tensor(X_range))
             BDY_loss = 10*torch.mean(BDY_loss_all)
@@ -116,10 +113,7 @@ class Network(object):
         Loading the model from the check point folder with name best_model_forward.pt
         :return:
         """
-        if torch.cuda.is_available():
-            self.model = torch.load(os.path.join(self.ckpt_dir, 'best_model_forward.pt'), weights_only=False)
-        else:
-            self.model = torch.load(os.path.join(self.ckpt_dir, 'best_model_forward.pt'), map_location=torch.device('cpu'), weights_only=False)
+        
 
     def train(self,
               epochs,
@@ -140,6 +134,7 @@ class Network(object):
 
         # Time keeping
         start_time = time.time()
+        mlflow.set_experiment(self.mlflow_exp_name)
         with mlflow.start_run(run_name=time.strftime('%Y%m%d_%H%M%S', time.localtime())):
             mlflow.log_params({
                     "learning_rate": 0.0005,
@@ -208,6 +203,7 @@ class Network(object):
                                            'val_loss': f'{test_avg_loss:.6f}'})
                     
             mlflow.log_metric("total_training_time", time.time() - start_time)
+        self.trained = True
 
     def evaluate_geometry(self, val_loader, save_dir='results/', back_prop_steps=300, save_num=1):
         """
@@ -224,14 +220,15 @@ class Network(object):
         usually inaccurate due to forward model error)
         :return:
         """
-        if self.model is None:
-            raise ValueError("Model is not trained yet. Please train the model first or call load() to load a pre-trained model.")
+
+        if not self.trained:
+            raise ValueError("The model is not trained yet. Please train the model first or call load() to load a pre-trained model.")
+
         if next(iter(val_loader))[0].shape[0] != 1:
             raise ValueError("The batch size of the test loader must be 1. Please change the batch size of the test loader.")
         
         self.model.to(self.device)
         self.model.eval()
-        # Get the file names
         Ypred_file = os.path.join(save_dir, 'test_Ypred.csv')
         Xtruth_file = os.path.join(save_dir, 'test_Xtruth.csv')
         Ytruth_file = os.path.join(save_dir, 'test_Ytruth.csv')
@@ -372,7 +369,7 @@ class Network(object):
         return self.geometry_mean, self.geometry_lower_bound, self.geometry_upper_bound
 
 
-    def predict(self, Xpred_file, no_save=False, load_state_dict=None):
+    def predict_spectra(self, dataloader no_save=False, load_state_dict=None):
         """
         The prediction function, takes Xpred file and write Ypred file using trained model
         :param Xpred_file: Xpred file by (usually VAE) for meta-material
@@ -380,10 +377,6 @@ class Network(object):
         :param load_state_dict: If None, load model using self.load() (default way), If a dir, load state_dict from that dir
         :return: pred_file, truth_file to compare
         """
-        if load_state_dict is None:
-            self.load()         # load the model in the usual way
-        else:
-            self.model.load_state_dict(torch.load(load_state_dict))
        
         Ypred_file = Xpred_file.replace('Xpred', 'Ypred')
         Ytruth_file = Ypred_file.replace('Ypred', 'Ytruth')
@@ -396,7 +389,6 @@ class Network(object):
         if cuda:
             self.model.cuda()
             Xpred_tensor = Xpred_tensor.cuda()
-        # Put into evaluation mode
         self.model.eval()
         Ypred = self.model(Xpred_tensor)
         if load_state_dict is not None:
@@ -408,15 +400,3 @@ class Network(object):
         np.savetxt(Ypred_file, Ypred.cpu().data.numpy())
 
         return Ypred_file, Ytruth_file
-
-    def plot_histogram(self, loss, ind):
-        """
-        Plot the loss histogram to see the loss distribution
-        """
-        f = plt.figure()
-        plt.hist(loss, bins=100)
-        plt.xlabel('MSE loss')
-        plt.ylabel('cnt')
-        plt.suptitle('(Avg MSE={:4e})'.format(np.mean(loss)))
-        plt.savefig(os.path.join('data','loss{}.png'.format(ind)))
-        return None
