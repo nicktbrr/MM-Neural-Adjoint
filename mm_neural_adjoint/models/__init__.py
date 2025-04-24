@@ -1,4 +1,4 @@
 from .base_model import BaseModel
-from .NA import Network
+from .NA import NANetwork
 
-__all__ = ['BaseModel', 'Network']
+__all__ = ['BaseModel', 'NANetwork']

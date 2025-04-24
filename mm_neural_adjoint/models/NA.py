@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-class Network(object):
+class NANetwork(object):
     def __init__(self,
                  geometry,
                  spectrum,
@@ -304,7 +304,7 @@ class Network(object):
                 geometry = geometry.to(self.device)
                 spectra = spectra.to(self.device)
                 # Initialize the geometry first
-                Xpred, _, _ = self.evaluate_one(spectra, val_loader, back_prop_steps)
+                Xpred, _, _ = self.evaluate_one(spectra, back_prop_steps)
 
                 np.savetxt(fxt, geometry.cpu().data.numpy())
                 np.savetxt(fyt, spectra.cpu().data.numpy())
@@ -441,7 +441,7 @@ class Network(object):
         return self.geometry_mean, self.geometry_lower_bound, self.geometry_upper_bound
 
 
-    def predict_spectra(self, dataloader, file_name=None):
+    def predict_spectra(self, geometry, file_name=None):
         """
         The prediction function, takes Xpred file and write Ypred file using trained model
         :param Xpred_file: Xpred file by (usually VAE) for meta-material
@@ -454,19 +454,14 @@ class Network(object):
             raise ValueError("The model is not trained yet. Please train the model first or call load() to load a pre-trained model.")
         self.model.to(self.device)
         self.model.eval()
-        Ypred = []
-        for geometry, spectra in dataloader:
-            geometry = geometry.to(self.device)
-            spectra = spectra.to(self.device)
-            logit = self.model(geometry)
-            Ypred = logit.cpu().data.numpy()
-            if file_name is not None:
-                if not os.path.exists('spectra_predictions'):
-                    os.makedirs('spectra_predictions')
-                with open(f'spectra_predictions/{file_name}', 'a') as f:
-                    np.savetxt(f, Ypred)
-            Ypred.append(Ypred)
-        Ypred = np.concatenate(Ypred, axis=0)
+        geometry = geometry.to(self.device)
+        logit = self.model(geometry)
+        Ypred = logit.cpu().data.numpy()
+        if file_name is not None:
+            if not os.path.exists('spectra_predictions'):
+                os.makedirs('spectra_predictions')
+            with open(f'spectra_predictions/{file_name}', 'a') as f:
+                np.savetxt(f, Ypred)
         return Ypred
     
     def predict_geometry(self, spectra, file_name=None, save_top=1):
