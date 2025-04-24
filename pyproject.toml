@@ -35,7 +35,7 @@ all = ["groundingdino-py"]
 
 [tool]
 [tool.setuptools.packages.find]
-include = ["MM-neural-adjoint*"]
+include = ["mm_neural_adjoint*"]
 exclude = ["docs*"]
 
 [tool.distutils.bdist_wheel]
