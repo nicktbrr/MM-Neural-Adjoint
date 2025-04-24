@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mm-neural-adjoint"
+version = "0.1.0"
+dynamic = ["version"]
+description = "A neural adjoint method implementation"
+readme = "README.md"
+authors = [
+    {name = "Nicholas Barsi-Rhyne", email = "nick@quantumventura.com"}
+]
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "numpy>=2.2.4",
+    "pandas>=2.2.3",
+    "tqdm>=4.67.1",
+    "mlflow>=2.21.3",
+    "scikit-learn>=1.4.0"
+]
+
+[project.optional-dependencies]
+cpu = ["torch>=2.6.0"]
+cuda = ["torch>=2.6.0+cu118"]  # for CUDA 11.8
+cuda12 = ["torch>=2.6.0+cu121"]  # for CUDA 12.1
+keywords = ["Neural Adjoint", "Neural Adjoint Method", "Neural Adjoints", "Meta Material", "Deep Learning"]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/MM-Neural-Adjoint"
+"Bug Tracker" = "https://github.com/yourusername/MM-Neural-Adjoint/issues"
+
