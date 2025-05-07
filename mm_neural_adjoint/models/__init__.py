@@ -1,4 +1,4 @@
-from .base_model import BaseModel
-from .NA import NANetwork
+from .conv_model import ConvModel
+from .lin_model import LinModel
 
-__all__ = ['BaseModel', 'NANetwork']
+__all__ = ['ConvModel', 'LinModel']
