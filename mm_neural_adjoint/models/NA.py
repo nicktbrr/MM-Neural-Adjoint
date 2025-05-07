@@ -5,7 +5,6 @@ The class wrapper for the networks
 import os
 import time
 import mlflow
-from .base_model import BaseModel
 import torch
 from torch import nn
 from torch.optim import lr_scheduler
@@ -15,20 +14,11 @@ from tqdm import tqdm
 
 class NANetwork(object):
     def __init__(self,
-                 geometry,
-                 spectrum,
+                 model,
                  device,
                  mlflow_exp_name = 'NA',
-                 num_linear_layers = 4,
-                 num_conv_layers = 3,
-                 num_linear_neurons = 1000,
-                 num_conv_out_channel = 4,
                  ):
-        self.model = BaseModel(geometry, spectrum, num_linear_layers, num_conv_layers, num_linear_neurons, num_conv_out_channel)
-        self.num_linear_layers = num_linear_layers
-        self.num_conv_layers = num_conv_layers
-        self.num_linear_neurons = num_linear_neurons
-        self.num_conv_out_channel = num_conv_out_channel
+        self.model = model
         self.device = device
         self.loss = self.make_loss()
         self.optm = None
@@ -121,10 +111,6 @@ class NANetwork(object):
         """
         checkpoint = {
             'model_state_dict': self.model.state_dict(),
-            'num_linear_layers': self.num_linear_layers,
-            'num_conv_layers': self.num_conv_layers,
-            'num_linear_neurons': self.num_linear_neurons,
-            'num_conv_out_channel': self.num_conv_out_channel,
             'best_validation_loss': self.best_validation_loss,
             'geometry_mean': self.geometry_mean,
             'geometry_lower_bound': self.geometry_lower_bound,
@@ -147,12 +133,6 @@ class NANetwork(object):
         
         # Load checkpoint with weights_only=False to handle numpy arrays
         checkpoint = torch.load(filepath, map_location=self.device, weights_only=False)
-        
-        # Set model architecture parameters first
-        self.num_linear_layers = checkpoint.get('num_linear_layers', 4)
-        self.num_conv_layers = checkpoint.get('num_conv_layers', 3)
-        self.num_linear_neurons = checkpoint.get('num_linear_neurons', 1000)
-        self.num_conv_out_channel = checkpoint.get('num_conv_out_channel', 4)
         
         # Load model state
         self.model.load_state_dict(checkpoint['model_state_dict'])
