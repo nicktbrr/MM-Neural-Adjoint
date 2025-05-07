@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "MM-neural-adjoint"
-version = "0.1.14"
+version = "0.1.16"
 description = "A neural adjoint method implementation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,7 +42,7 @@ exclude = ["docs*"]
 universal = true
 
 [tool.bumpversion]
-current_version = "0.1.14"
+current_version = "0.1.16"
 commit = true
 tag = true
 
